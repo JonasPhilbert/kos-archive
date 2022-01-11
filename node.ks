@@ -37,6 +37,9 @@ function nodeBurnTime {
             set isp to isp + (eng:isp * (eng:availablethrust / ship:availablethrust)).
         }
     }
+    if isp = 0 {
+        return -1.
+    }
     local finalMass is ship:mass / constant:e ^ (node:deltav:mag / (isp * constant:g0)).
     local fuelRate is ship:availablethrust / (isp * constant:g0).
 
@@ -49,21 +52,36 @@ print " ".
 
 sas off.
 
-set thrt to 0.
-lock throttle to thrt.
-lock steering to nextNode:deltav.
-set burnTime to nodeBurnTime(nextNode).
-print "Est. burn time: " + round(burnTime, 1) + " secs.".
-print "Waiting until N-" + round(burnTime / 2, 1).
-wait until nextNode:eta <= burnTime / 2.
-print "Initiating burn!".
-set thrt to 1.
-lock err to (nextNode:deltav:normalized * ship:velocity:orbit:normalized) - 1.
-telem("Error : " + round(err, 1), 1).
-until nextNode:deltav:mag < 0.1 or abs(err) > 0.01 {
-    telem("Error : " + round(err, 1), 1).
+if allNodes:length = 0 {
+    print "Err: No maneuver node!".
+    set EXIT to 1/0.
 }
 set thrt to 0.
+lock throttle to thrt.
+set burnTime to nodeBurnTime(nextNode).
+if burnTime = -1 {
+    print "Err: Burn time infinite! Do you have any active, fueled engines?".
+    set EXIT to 1/0.
+}
+print "Est. burn time: " + round(burnTime, 1) + " secs.".
+lock steering to nextNode:deltav.
+lock dirErr to (nextNode:deltav:normalized * ship:facing:vector:normalized) - 1.  
+until abs(dirErr) <= 0.0001 {
+    telem("Error : " + round(dirErr, 1), 1).
+}
+
+print "Warping to N- " + round((burnTime / 2) - 3, 1) + "...".
+warpTo(time:seconds + (nextNode:eta - (burnTime / 2) - 3)).
+wait until nextNode:eta <= burnTime / 2.
+
+print "Initiating burn.".
+lock velErr to (nextNode:deltav:normalized * ship:velocity:orbit:normalized) - 1.
+set thrt to 1.
+until nextNode:deltav:mag < 0.1 or abs(velErr) > 0.01 {
+    telem("Error : " + round(velErr, 1), 1).
+}
+
 print "Burn complete.".
+set thrt to 0.
 
 sas on.
