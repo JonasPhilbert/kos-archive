@@ -1,3 +1,4 @@
+// TODO: Clamp pitch to never go below horizon, even for really high orbital targets.
 parameter targetApoapsis is 100000.
 
 // #region Libs
@@ -41,8 +42,25 @@ function adjThrt {
   }
 }
 
+function calcTgtVel {
+  if ship:altitude > 50000 {
+    return 9001.
+  } else {
+    return 3.61966e-7 * ship:altitude ^ 2 + 0.015553 * ship:altitude + 200.
+  }
+}
+
+function calcTgtPitch {
+  local result is 90 + (-0.0359278 * altitude ^ 0.730423).
+  if (result <= 0) {
+    return 0.
+  } else {
+    return result.
+  }
+}
+
 clearScreen.
-print "Ascent v1".
+print "Ascent v1.1".
 print "  Note: Assuming first stage is engines and second stage is supports.".
 print " ".
 
@@ -54,12 +72,18 @@ stagePrint("tower supports").
 
 set thrt to 1.
 lock throttle to thrt.
-lock tgtVel to 200 + (0.000001 * altitude ^ 2).
+lock tgtVel to calcTgtVel().
 lock velErr to tgtVel - ship:velocity:surface:mag.
 lock dVelTgt to velErr * 1. // (velErr * const) higher constants means small velocity err prompts higher target velocity change.
 
-lock tgtPitch to 90 + (-0.0359278 * altitude ^ 0.730423).
+lock tgtPitch to calcTgtPitch().
 lock steering to heading(90, tgtPitch).
+
+when ship:availablethrust <= 0 then {
+  print "No available thrust. Staging.".
+  stage.
+  preserve.
+}
 
 until apoapsis > targetApoapsis {
   set dVelErr to dVelTgt - dVel:mag.
@@ -76,6 +100,7 @@ until apoapsis > targetApoapsis {
   telem("Pitch tgt.      : " + round(tgtPitch, 1), 7).
 }
 
+set thrt to 0.
 print "Orbital ascent complete.".
 
 sas on.
