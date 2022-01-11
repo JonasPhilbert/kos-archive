@@ -81,7 +81,7 @@ until nextNode:deltav:mag < 0.1 or abs(velErr) > 0.01 {
     telem("Error : " + round(velErr, 1), 1).
 }
 
-print "Burn complete.".
 set thrt to 0.
+print "Burn complete.".
 
 sas on.
