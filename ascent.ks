@@ -1,3 +1,5 @@
+parameter targetApoapsis is 100000.
+
 // #region Libs
 set dVel to V(0, 0, 0).
 set _lastVel to ship:velocity:surface.
@@ -59,7 +61,7 @@ lock dVelTgt to velErr * 1. // (velErr * const) higher constants means small vel
 lock tgtPitch to 90 + (-0.0359278 * altitude ^ 0.730423).
 lock steering to heading(90, tgtPitch).
 
-until apoapsis > 100000 {
+until apoapsis > targetApoapsis {
   set dVelErr to dVelTgt - dVel:mag.
   adjThrt(dVelErr / 100).
 
